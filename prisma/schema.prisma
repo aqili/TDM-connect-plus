@@ -1,0 +1,114 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String
+  email         String       @unique
+  password      String
+  role          Role        @default(USER)
+  status        UserStatus  @default(ACTIVE)
+  lastLogin     DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+  vacations     Vacation[]
+  certificates  Certificate[]
+  teamLunches1  TeamLunch[] @relation("Organizer1")
+  teamLunches2  TeamLunch[] @relation("Organizer2")
+}
+
+model Vacation {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  type        VacationType
+  startDate   DateTime
+  endDate     DateTime
+  status      VacationStatus @default(PENDING)
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+}
+
+model Certificate {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  name        String
+  issuer      String
+  issueDate   DateTime
+  expiryDate  DateTime
+  status      CertificateStatus @default(ACTIVE)
+  description String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  deletedAt   DateTime?
+}
+
+model TeamLunch {
+  id            String       @id @default(cuid())
+  month         DateTime
+  suggestedDate DateTime
+  organizer1Id  String
+  organizer1    User         @relation("Organizer1", fields: [organizer1Id], references: [id])
+  organizer2Id  String
+  organizer2    User         @relation("Organizer2", fields: [organizer2Id], references: [id])
+  status        TeamLunchStatus @default(NEW)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  deletedAt     DateTime?
+
+  @@index([organizer1Id])
+  @@index([organizer2Id])
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  DELETED
+}
+
+enum VacationType {
+  ANNUAL
+  SICK
+  MATERNITY
+  PATERNITY
+  UNPAID
+}
+
+enum VacationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum CertificateStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum TeamLunchStatus {
+  NEW
+  PENDING
+  DONE
+  RATING
+} 
