@@ -41,11 +41,23 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { type, startDate, endDate, description } = body;
 
+    // Convert date strings to Date objects
+    const formattedStartDate = new Date(startDate);
+    const formattedEndDate = new Date(endDate);
+
+    // Validate dates
+    if (isNaN(formattedStartDate.getTime()) || isNaN(formattedEndDate.getTime())) {
+      return NextResponse.json(
+        { error: 'Invalid date format. Please use YYYY-MM-DD format.' },
+        { status: 400 }
+      );
+    }
+
     const vacation = await prisma.vacation.create({
       data: {
         type,
-        startDate,
-        endDate,
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
         description,
         status: 'PENDING',
         userId: session.user.id,
@@ -63,6 +75,9 @@ export async function POST(request: Request) {
     return NextResponse.json(vacation);
   } catch (error) {
     console.error('Error creating vacation:', error);
+    if (error instanceof Error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 } 

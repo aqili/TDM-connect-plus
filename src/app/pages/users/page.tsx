@@ -14,13 +14,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "react-hot-toast";
 
 interface User {
   id: string;
-  name: string | null;
+  name: string;
   email: string;
   role: string;
   status: string;
+  portfolio: string | null;
   createdAt: string;
 }
 
@@ -29,6 +31,8 @@ interface AddUserFormData {
   email: string;
   password: string;
   role: string;
+  status: string;
+  portfolio: string;
 }
 
 interface EditUserFormData {
@@ -36,6 +40,7 @@ interface EditUserFormData {
   email: string;
   role: string;
   status: string;
+  portfolio: string;
 }
 
 type SortColumn = keyof User;
@@ -57,16 +62,21 @@ export default function UsersPage() {
     name: "",
     email: "",
     password: "",
-    role: "USER"
+    role: "USER",
+    status: "ACTIVE",
+    portfolio: "PRODUCTS_SAFETY_LOGISTICS"
   });
   const [editFormData, setEditFormData] = useState<EditUserFormData>({
     name: "",
     email: "",
     role: "USER",
-    status: "ACTIVE"
+    status: "ACTIVE",
+    portfolio: "PRODUCTS_SAFETY_LOGISTICS"
   });
   const [sortColumn, setSortColumn] = useState<SortColumn>("name");
   const [sortDirection, setSortDirection] = useState("asc");
+
+  const isAdmin = session?.user?.role === "ADMIN";
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -105,6 +115,8 @@ export default function UsersPage() {
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAdmin) return;
+
     setIsCreatingUser(true);
     setError(null);
 
@@ -129,7 +141,9 @@ export default function UsersPage() {
         name: "",
         email: "",
         password: "",
-        role: "USER"
+        role: "USER",
+        status: "ACTIVE",
+        portfolio: "PRODUCTS_SAFETY_LOGISTICS"
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create user");
@@ -140,7 +154,7 @@ export default function UsersPage() {
 
   const handleEditUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUser) return;
+    if (!selectedUser || !isAdmin) return;
 
     setIsUpdatingUser(true);
     setError(null);
@@ -175,7 +189,7 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async () => {
-    if (!selectedUser) return;
+    if (!selectedUser || !isAdmin) return;
 
     setIsDeletingUser(true);
     setError(null);
@@ -213,17 +227,23 @@ export default function UsersPage() {
   };
 
   const openEditModal = (user: User) => {
+    if (!isAdmin) {
+      toast.error("You don't have permission to edit users");
+      return;
+    }
     setSelectedUser(user);
     setEditFormData({
-      name: user.name || "",
+      name: user.name,
       email: user.email,
       role: user.role,
-      status: user.status
+      status: user.status,
+      portfolio: user.portfolio || "PRODUCTS_SAFETY_LOGISTICS"
     });
     setIsEditUserModalOpen(true);
   };
 
   const openDeleteModal = (user: User) => {
+    if (!isAdmin) return;
     setSelectedUser(user);
     setIsDeleteModalOpen(true);
   };
@@ -232,9 +252,9 @@ export default function UsersPage() {
     return users.filter((user) =>
       (user.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(searchTerm.toLowerCase())
+      (isAdmin && user.role.toLowerCase().includes(searchTerm.toLowerCase()))
     );
-  }, [users, searchTerm]);
+  }, [users, searchTerm, isAdmin]);
 
   const sortedUsers = useMemo(() => {
     return filteredUsers.sort((a, b) => {
@@ -255,298 +275,61 @@ export default function UsersPage() {
     }
   };
 
-  if (error) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ACTIVE":
+        return "bg-green-100 text-green-800";
+      case "INACTIVE":
+        return "bg-red-100 text-red-800";
+      default:
+        return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-red-600">Error</h2>
-          <p className="mt-2 text-gray-600">{error}</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Users</h1>
-        <button 
-          onClick={() => setIsAddUserModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add User
-        </button>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Users</h1>
+        {isAdmin && (
+          <Button 
+            onClick={() => setIsAddUserModalOpen(true)}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add User
+          </Button>
+        )}
       </div>
 
-      {/* Add User Modal */}
-      {isAddUserModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Add New User</h2>
-              <button
-                onClick={() => setIsAddUserModalOpen(false)}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleAddUser} className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  id="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="role" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Role
-                </label>
-                <select
-                  id="role"
-                  value={formData.role}
-                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="USER">User</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => setIsAddUserModalOpen(false)}
-                  className="px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isCreatingUser}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isCreatingUser ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    'Create User'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {isEditUserModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">Edit User</h2>
-              <button
-                onClick={() => {
-                  setIsEditUserModalOpen(false);
-                  setSelectedUser(null);
-                }}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleEditUser} className="space-y-4">
-              <div>
-                <label htmlFor="edit-name" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  id="edit-name"
-                  value={editFormData.name}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-email" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  id="edit-email"
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, email: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="edit-role" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Role
-                </label>
-                <select
-                  id="edit-role"
-                  value={editFormData.role}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, role: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="USER">User</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
-              </div>
-              <div>
-                <label htmlFor="edit-status" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300 mb-1">
-                  Status
-                </label>
-                <select
-                  id="edit-status"
-                  value={editFormData.status}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, status: e.target.value }))}
-                  className="w-full px-3 py-2 border border-neutral-300 dark:border-neutral-600 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 mt-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditUserModalOpen(false);
-                    setSelectedUser(null);
-                  }}
-                  className="px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isUpdatingUser}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                >
-                  {isUpdatingUser ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    'Update User'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Status Change Modal */}
-      {isDeleteModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-neutral-800 rounded-lg p-6 w-full max-w-md">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-neutral-900 dark:text-white">
-                {selectedUser.status === "INACTIVE" ? "Activate User" : "Deactivate User"}
-              </h2>
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setSelectedUser(null);
-                }}
-                className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-neutral-600 dark:text-neutral-300 mb-6">
-              {selectedUser.status === "INACTIVE" 
-                ? `Are you sure you want to activate ${selectedUser.name || "this user"}? They will be able to access the system again.`
-                : `Are you sure you want to deactivate ${selectedUser.name || "this user"}? They will no longer be able to access the system.`
-              }
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setSelectedUser(null);
-                }}
-                className="px-4 py-2 text-neutral-700 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteUser}
-                disabled={isDeletingUser}
-                className={`px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
-                  selectedUser.status === "INACTIVE" 
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
-                }`}
-              >
-                {isDeletingUser ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    {selectedUser.status === "INACTIVE" ? "Activating..." : "Deactivating..."}
-                  </>
-                ) : (
-                  selectedUser.status === "INACTIVE" ? "Activate User" : "Deactivate User"
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="bg-white dark:bg-neutral-800 rounded-lg shadow-sm border border-neutral-200 dark:border-neutral-700">
-        <div className="p-4 border-b border-neutral-200 dark:border-neutral-700">
+      <div className="bg-white rounded-lg shadow p-6">
+        <div className="mb-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-4 w-4" />
             <Input
+              type="text"
               placeholder="Search users..."
               value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-neutral-200 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {error && (
+          <div className="bg-red-50 text-red-500 p-4 rounded-md mb-4">
+            {error}
+          </div>
+        )}
+
+        <div className="rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
@@ -554,102 +337,334 @@ export default function UsersPage() {
                   className="cursor-pointer"
                   onClick={() => handleSort("name")}
                 >
-                  Name
-                  {sortColumn === "name" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "\u2191" : "\u2193"}
-                    </span>
-                  )}
+                  Name {sortColumn === "name" && (sortDirection === "asc" ? "↑" : "↓")}
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSort("email")}
                 >
-                  Email
-                  {sortColumn === "email" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "\u2191" : "\u2193"}
-                    </span>
-                  )}
+                  Email {sortColumn === "email" && (sortDirection === "asc" ? "↑" : "↓")}
                 </TableHead>
+                {isAdmin && (
+                  <TableHead
+                    className="cursor-pointer"
+                    onClick={() => handleSort("role")}
+                  >
+                    Role {sortColumn === "role" && (sortDirection === "asc" ? "↑" : "↓")}
+                  </TableHead>
+                )}
                 <TableHead
                   className="cursor-pointer"
-                  onClick={() => handleSort("role")}
+                  onClick={() => handleSort("portfolio")}
                 >
-                  Role
-                  {sortColumn === "role" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "\u2191" : "\u2193"}
-                    </span>
-                  )}
+                  Portfolio {sortColumn === "portfolio" && (sortDirection === "asc" ? "↑" : "↓")}
                 </TableHead>
                 <TableHead
                   className="cursor-pointer"
                   onClick={() => handleSort("status")}
                 >
-                  Status
-                  {sortColumn === "status" && (
-                    <span className="ml-1">
-                      {sortDirection === "asc" ? "\u2191" : "\u2193"}
-                    </span>
-                  )}
+                  Status {sortColumn === "status" && (sortDirection === "asc" ? "↑" : "↓")}
                 </TableHead>
-                <TableHead>Actions</TableHead>
+                {isAdmin && <TableHead>Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    Loading users...
+              {sortedUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  {isAdmin && <TableCell>{user.role}</TableCell>}
+                  <TableCell>{user.portfolio || "Not Assigned"}</TableCell>
+                  <TableCell>
+                    <Badge className={getStatusColor(user.status)}>
+                      {user.status}
+                    </Badge>
                   </TableCell>
-                </TableRow>
-              ) : sortedUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    No users found.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sortedUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                  {isAdmin && (
                     <TableCell>
-                      <Badge variant="outline">
-                        {user.role}
-                      </Badge>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditModal(user)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openDeleteModal(user)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={user.status === "ACTIVE" ? "default" : "secondary"}
-                      >
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="flex gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => openEditModal(user)}>
-                        <Edit className="size-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => openDeleteModal(user)}
-                      >
-                        {user.status === "INACTIVE" ? (
-                          <Power className="size-4 text-green-500" />
-                        ) : (
-                          <Power className="size-4 text-red-500" />
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+                  )}
+                </TableRow>
+              ))}
             </TableBody>
           </Table>
         </div>
       </div>
+
+      {/* Add User Modal */}
+      {isAddUserModalOpen && isAdmin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Add New User</h2>
+              <button
+                onClick={() => setIsAddUserModalOpen(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleAddUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <Input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Password</label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <select
+                  value={formData.role}
+                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Portfolio</label>
+                <select
+                  value={formData.portfolio}
+                  onChange={(e) => setFormData({ ...formData, portfolio: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="PRODUCTS_SAFETY_LOGISTICS">Products Safety & Logistics</option>
+                  <option value="JUSTICE_URBAN_DEVELOPMENT">Justice and Urban Development</option>
+                  <option value="ENTERPRISE_SOLUTIONS">Enterprise Solutions</option>
+                  <option value="QOL_PIF_PORTFOLIO">QoL & PIF Portfolio</option>
+                  <option value="MOBILITY_INDUSTRIAL_TECH">Mobility & Industrial Tech.</option>
+                  <option value="DIGITAL_VENTURES">Digital Ventures</option>
+                  <option value="THIQAH">Thiqah</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsAddUserModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isCreatingUser}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isCreatingUser ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create User'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {isEditUserModalOpen && selectedUser && isAdmin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Edit User</h2>
+              <button
+                onClick={() => {
+                  setIsEditUserModalOpen(false);
+                  setSelectedUser(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleEditUser} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <Input
+                  type="text"
+                  value={editFormData.name}
+                  onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <Input
+                  type="email"
+                  value={editFormData.email}
+                  onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <select
+                  value={editFormData.role}
+                  onChange={(e) => setEditFormData({ ...editFormData, role: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Portfolio</label>
+                <select
+                  value={editFormData.portfolio}
+                  onChange={(e) => setEditFormData({ ...editFormData, portfolio: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="PRODUCTS_SAFETY_LOGISTICS">Products Safety & Logistics</option>
+                  <option value="JUSTICE_URBAN_DEVELOPMENT">Justice and Urban Development</option>
+                  <option value="ENTERPRISE_SOLUTIONS">Enterprise Solutions</option>
+                  <option value="QOL_PIF_PORTFOLIO">QoL & PIF Portfolio</option>
+                  <option value="MOBILITY_INDUSTRIAL_TECH">Mobility & Industrial Tech.</option>
+                  <option value="DIGITAL_VENTURES">Digital Ventures</option>
+                  <option value="THIQAH">Thiqah</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Status</label>
+                <select
+                  value={editFormData.status}
+                  onChange={(e) => setEditFormData({ ...editFormData, status: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 mt-6">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsEditUserModalOpen(false);
+                    setSelectedUser(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isUpdatingUser}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {isUpdatingUser ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update User'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete User Modal */}
+      {isDeleteModalOpen && selectedUser && isAdmin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Delete User</h2>
+              <button
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setSelectedUser(null);
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to {selectedUser.status === "ACTIVE" ? "deactivate" : "activate"} this user?
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setSelectedUser(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteUser}
+                disabled={isDeletingUser}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                {isDeletingUser ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    {selectedUser.status === "ACTIVE" ? "Deactivating..." : "Activating..."}
+                  </>
+                ) : (
+                  selectedUser.status === "ACTIVE" ? 'Deactivate User' : 'Activate User'
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 

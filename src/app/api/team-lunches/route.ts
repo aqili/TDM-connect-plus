@@ -29,37 +29,30 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const teamLunches = await prisma.$queryRaw<TeamLunchResult[]>`
-      SELECT 
-        tl.id,
-        tl.month,
-        tl.suggestedDate,
-        tl.status,
-        tl.createdAt,
-        tl.updatedAt,
-        JSON_OBJECT(
-          'id', o1.id,
-          'name', o1.name,
-          'email', o1.email
-        ) as organizer1,
-        JSON_OBJECT(
-          'id', o2.id,
-          'name', o2.name,
-          'email', o2.email
-        ) as organizer2
-      FROM TeamLunch tl
-      LEFT JOIN User o1 ON tl.organizer1Id = o1.id
-      LEFT JOIN User o2 ON tl.organizer2Id = o2.id
-      ORDER BY tl.createdAt DESC
-    `;
+    const teamLunches = await prisma.teamLunch.findMany({
+      include: {
+        organizer1: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        organizer2: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: {
+        month: 'desc',
+      },
+    });
 
     return NextResponse.json(teamLunches);
   } catch (error) {
-    console.error('Failed to fetch team lunches:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch team lunches' },
-      { status: 500 }
-    );
+    console.error('Error fetching team lunches:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
@@ -70,62 +63,36 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const json = await request.json();
-    const { month, suggestedDate, organizer1Id, organizer2Id } = json;
+    const body = await request.json();
+    const { month, suggestedDate, organizer1Id, organizer2Id } = body;
 
-    await prisma.$executeRaw`
-      INSERT INTO TeamLunch (
-        id,
-        month,
-        suggestedDate,
+    const teamLunch = await prisma.teamLunch.create({
+      data: {
+        month: new Date(month),
+        suggestedDate: new Date(suggestedDate),
         organizer1Id,
         organizer2Id,
-        status,
-        createdAt,
-        updatedAt
-      ) VALUES (
-        UUID(),
-        ${new Date(month)},
-        ${new Date(suggestedDate)},
-        ${organizer1Id},
-        ${organizer2Id},
-        'NEW',
-        NOW(),
-        NOW()
-      )
-    `;
+        status: 'NEW',
+      },
+      include: {
+        organizer1: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+        organizer2: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+    });
 
-    const createdLunch = await prisma.$queryRaw<TeamLunchResult[]>`
-      SELECT 
-        tl.id,
-        tl.month,
-        tl.suggestedDate,
-        tl.status,
-        tl.createdAt,
-        tl.updatedAt,
-        JSON_OBJECT(
-          'id', o1.id,
-          'name', o1.name,
-          'email', o1.email
-        ) as organizer1,
-        JSON_OBJECT(
-          'id', o2.id,
-          'name', o2.name,
-          'email', o2.email
-        ) as organizer2
-      FROM TeamLunch tl
-      LEFT JOIN User o1 ON tl.organizer1Id = o1.id
-      LEFT JOIN User o2 ON tl.organizer2Id = o2.id
-      ORDER BY tl.createdAt DESC
-      LIMIT 1
-    `;
-
-    return NextResponse.json(createdLunch[0]);
+    return NextResponse.json(teamLunch);
   } catch (error) {
-    console.error('Failed to create team lunch:', error);
-    return NextResponse.json(
-      { error: 'Failed to create team lunch' },
-      { status: 500 }
-    );
+    console.error('Error creating team lunch:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 } 

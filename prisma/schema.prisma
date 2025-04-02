@@ -17,6 +17,7 @@ model User {
   password      String
   role          Role        @default(USER)
   status        UserStatus  @default(ACTIVE)
+  portfolio     UserPortfolio?
   lastLogin     DateTime?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -111,4 +112,14 @@ enum TeamLunchStatus {
   PENDING
   DONE
   RATING
+}
+
+enum UserPortfolio {
+  PRODUCTS_SAFETY_LOGISTICS
+  JUSTICE_URBAN_DEVELOPMENT
+  ENTERPRISE_SOLUTIONS
+  QOL_PIF_PORTFOLIO
+  MOBILITY_INDUSTRIAL_TECH
+  DIGITAL_VENTURES
+  THIQAH
 } 

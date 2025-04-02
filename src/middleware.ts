@@ -8,6 +8,11 @@ export default withAuth(
     const isAuthPage = req.nextUrl.pathname.startsWith("/login");
     const isPublicPage = req.nextUrl.pathname === "/" || req.nextUrl.pathname === "/create-user";
 
+    // Redirect authenticated users from landing page to dashboard
+    if (isAuth && req.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL("/pages/dashboard", req.url));
+    }
+
     if (isAuthPage) {
       if (isAuth) {
         return NextResponse.redirect(new URL("/pages/dashboard", req.url));
@@ -22,7 +27,7 @@ export default withAuth(
       }
 
       return NextResponse.redirect(
-        new URL(`/login?from=${encodeURIComponent(from)}`, req.url)
+        new URL(`/?from=${encodeURIComponent(from)}`, req.url)
       );
     }
   },
@@ -43,14 +48,13 @@ export default withAuth(
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!api|_next/static|_next/image|favicon.ico|public).*)",
+    // Protect these routes that require authentication
+    "/pages/:path*",
+    "/api/users/:path*",
+    "/api/vacations/:path*",
+    "/api/certificates/:path*",
+    "/api/team-lunches/:path*",
+    // Exclude auth and public API routes
+    "/((?!api/auth|_next/static|_next/image|favicon.ico|public).*)",
   ],
 }; 

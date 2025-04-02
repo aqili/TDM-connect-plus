@@ -11,13 +11,8 @@ export async function GET() {
     }
 
     const certificates = await prisma.certificate.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+      where: {
+        userId: session.user.id,
       },
       orderBy: {
         createdAt: 'desc',
@@ -35,35 +30,39 @@ export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const body = await request.json();
-    const { name, issuer, issueDate, expiryDate, description } = body;
+    const { name, issuer, issueDate, expiryDate, status, description, userId } = await request.json();
+
+    if (!name || !issuer || !issueDate || !expiryDate || !status || !description || !userId) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
 
     const certificate = await prisma.certificate.create({
       data: {
         name,
         issuer,
-        issueDate,
-        expiryDate,
+        issueDate: new Date(issueDate),
+        expiryDate: new Date(expiryDate),
+        status,
         description,
-        status: 'ACTIVE',
-        userId: session.user.id,
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
+        userId,
       },
     });
 
     return NextResponse.json(certificate);
   } catch (error) {
-    console.error('Error creating certificate:', error);
-    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+    console.error("[CERTIFICATES_POST]", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
   }
 } 

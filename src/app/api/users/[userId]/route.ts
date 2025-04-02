@@ -18,7 +18,7 @@ export async function PATCH(
       );
     }
 
-    const { name, email, role, status } = await request.json();
+    const { name, email, role, status, portfolio } = await request.json();
 
     // Check if email is being changed and if it's already taken
     if (email) {
@@ -47,7 +47,8 @@ export async function PATCH(
         name,
         email,
         role,
-        status
+        status,
+        portfolio
       }
     });
 

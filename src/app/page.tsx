@@ -10,12 +10,15 @@ export default function HomePage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
     if (!email || !password) {
-      toast.error("Please fill in all fields");
+      setError("Please enter both email and password");
       return;
     }
 
@@ -28,15 +31,16 @@ export default function HomePage() {
       });
 
       if (result?.error) {
+        setError(result.error);
         toast.error(result.error);
       } else {
         toast.success("Successfully signed in!");
-        router.push("/team-lunches");
+        router.push("/pages/dashboard");
         router.refresh();
       }
     } catch (error) {
-      toast.error("An error occurred during login");
-      console.error("Login error:", error);
+      setError("An unexpected error occurred. Please try again.");
+      toast.error("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -55,6 +59,11 @@ export default function HomePage() {
             </div>
             <div className="flex items-center space-x-4">
               <form onSubmit={handleSubmit} className="flex items-center space-x-3">
+                {error && (
+                  <div className="text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
                 <input
                   type="email"
                   value={email}
@@ -102,7 +111,7 @@ export default function HomePage() {
       <footer className="fixed bottom-0 w-full py-4 bg-white/80 backdrop-blur-lg border-t border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <p className="text-center text-sm text-gray-600">
-            Scroll down to explore TDM Connect Plus
+             Connect 
           </p>
         </div>
       </footer>

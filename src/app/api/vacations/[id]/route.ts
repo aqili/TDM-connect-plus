@@ -31,6 +31,11 @@ export async function GET(
       return NextResponse.json({ error: 'Vacation not found' }, { status: 404 });
     }
 
+    // Only allow users to view their own vacations unless they're an admin
+    if (session.user.role !== 'ADMIN' && vacation.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
     return NextResponse.json(vacation);
   } catch (error) {
     console.error('Error fetching vacation:', error);
@@ -51,17 +56,34 @@ export async function PUT(
     const body = await request.json();
     const { type, startDate, endDate, description, status } = body;
 
+    // Check if the vacation exists and belongs to the user
+    const existingVacation = await prisma.vacation.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!existingVacation) {
+      return NextResponse.json({ error: 'Vacation not found' }, { status: 404 });
+    }
+
+    // Only allow users to edit their own vacations unless they're an admin
+    if (session.user.role !== 'ADMIN' && existingVacation.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+    }
+
+    // Only allow admins to change the status
+    const updateData = {
+      type,
+      startDate,
+      endDate,
+      description,
+      ...(session.user.role === 'ADMIN' ? { status } : {}),
+    };
+
     const vacation = await prisma.vacation.update({
       where: {
         id: params.id,
       },
-      data: {
-        type,
-        startDate,
-        endDate,
-        description,
-        status,
-      },
+      data: updateData,
       include: {
         user: {
           select: {
@@ -87,6 +109,20 @@ export async function DELETE(
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Check if the vacation exists and belongs to the user
+    const existingVacation = await prisma.vacation.findUnique({
+      where: { id: params.id },
+    });
+
+    if (!existingVacation) {
+      return NextResponse.json({ error: 'Vacation not found' }, { status: 404 });
+    }
+
+    // Only allow users to delete their own vacations unless they're an admin
+    if (session.user.role !== 'ADMIN' && existingVacation.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
     await prisma.vacation.delete({

@@ -6,8 +6,8 @@ import { authOptions } from "@/lib/auth";
 
 export async function POST(request: Request) {
   try {
-    const { email, password, name, role } = await request.json();
-    console.log('Creating user:', { email, name, role });
+    const { email, password, name, role, portfolio } = await request.json();
+    console.log('Creating user:', { email, name, role, portfolio });
 
     if (!email || !password || !name) {
       console.log('Missing required fields');
@@ -41,7 +41,8 @@ export async function POST(request: Request) {
         password: hashedPassword,
         name,
         role: role || 'USER',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        portfolio: portfolio || null
       }
     });
 
@@ -75,6 +76,7 @@ export async function GET() {
         email: true,
         role: true,
         status: true,
+        portfolio: true,
       },
       orderBy: {
         createdAt: 'desc'

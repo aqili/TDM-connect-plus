@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
-import { LayoutDashboard, Calendar, Award, Users, Settings, LogOut, Bell } from "lucide-react";
+import { LayoutDashboard, Calendar, Award, Users, Settings, LogOut, Bell, Utensils } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
@@ -40,21 +40,14 @@ export function SidebarDemo() {
       label: "Team Lunches",
       href: "/pages/team-lunches",
       icon: (
-        <Users className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
+        <Utensils className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
     {
-      label: "Users",
+      label: "TDMs",
       href: "/pages/users",
       icon: (
         <Users className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-      ),
-    },
-    {
-      label: "Settings",
-      href: "/pages/settings",
-      icon: (
-        <Settings className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
       ),
     },
   ];
@@ -78,18 +71,6 @@ export function SidebarDemo() {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <SidebarLink
-              link={{
-                label: "Notifications",
-                href: "/pages/notifications",
-                icon: (
-                  <Bell className="text-neutral-700 dark:text-neutral-200 h-5 w-5 flex-shrink-0" />
-                ),
-              }}
-              className={cn(
-                pathname === "/pages/notifications" && "bg-neutral-200 dark:bg-neutral-700"
-              )}
-            />
             <SidebarLink
               link={{
                 label: session?.user?.name || "User",
